@@ -1,3 +1,14 @@
+import "./style.css";
+import { words } from "./wordlist.js";
+
+const WORDS = Array.isArray(words) ? words : [];
+const webCrypto = globalThis.crypto;
+const subtleCrypto = webCrypto?.subtle;
+
+if (!webCrypto || !subtleCrypto) {
+  throw new Error("Web Crypto API is required for LetC");
+}
+
 const ALPHABET = "ybndrfg8ejkmcpqxot1uwisza345h769";
 const MIN = 0x31; // 1
 const MAX = 0x7a; // z
@@ -35,16 +46,16 @@ const utf8 = (() => {
     return length;
   }
 
-  let toString;
+  let decodeToString;
 
   if (typeof TextDecoder !== "undefined") {
     const decoder = new TextDecoder();
 
-    toString = function toString(buffer) {
+    decodeToString = function decodeToString(buffer) {
       return decoder.decode(buffer);
     };
   } else {
-    toString = function toString(buffer) {
+    decodeToString = function decodeToString(buffer) {
       const len = buffer.byteLength;
 
       let output = "";
@@ -149,12 +160,12 @@ const utf8 = (() => {
 
   return {
     byteLength,
-    toString,
+    toString: decodeToString,
     write,
   };
 })();
 
-function fromString(string, encoding) {
+function fromString(string, _encoding) {
   const buffer = new Uint8Array(utf8.byteLength(string));
   utf8.write(buffer, string);
   return buffer;
@@ -348,12 +359,12 @@ function concatBytes(...arrays) {
 
 function randBytes(n) {
   const b = new Uint8Array(n);
-  crypto.getRandomValues(b);
+  webCrypto.getRandomValues(b);
   return b;
 }
 
 async function deriveAesKey(password, salt, iterations = 250_000) {
-  const baseKey = await crypto.subtle.importKey(
+  const baseKey = await subtleCrypto.importKey(
     "raw",
     te.encode(password),
     "PBKDF2",
@@ -361,7 +372,7 @@ async function deriveAesKey(password, salt, iterations = 250_000) {
     ["deriveKey"],
   );
 
-  return crypto.subtle.deriveKey(
+  return subtleCrypto.deriveKey(
     {
       name: "PBKDF2",
       salt,
@@ -411,7 +422,7 @@ async function encryptBytes(plaintext, password) {
   const key = await deriveAesKey(password, salt);
 
   const ct = new Uint8Array(
-    await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, ptBytes),
+    await subtleCrypto.encrypt({ name: "AES-GCM", iv }, key, ptBytes),
   );
 
   return concatBytes(version, new Uint8Array([flags]), salt, iv, ct);
@@ -437,7 +448,7 @@ async function decryptBytes(packed, password) {
   const ct = packed.slice(off);
 
   const key = await deriveAesKey(password, salt);
-  const ptBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
+  const ptBuf = await subtleCrypto.decrypt({ name: "AES-GCM", iv }, key, ct);
   const ptBytes = new Uint8Array(ptBuf);
 
   if (version === 2 && flags & 1) {
@@ -450,16 +461,14 @@ async function decryptBytes(packed, password) {
 const WORD_RADIX = 8192; // 13 bits per word
 
 function getWordTables() {
-  if (!window.words || !Array.isArray(window.words)) {
-    throw new Error("window.words missing");
+  if (!Array.isArray(WORDS)) {
+    throw new Error("wordlist missing");
   }
-  if (window.words.length < WORD_RADIX) {
+  if (WORDS.length < WORD_RADIX) {
     throw new Error(`wordlist must have at least ${WORD_RADIX} words`);
   }
 
-  const list = window.words
-    .slice(0, WORD_RADIX)
-    .map((w) => ("" + w).toLowerCase());
+  const list = WORDS.slice(0, WORD_RADIX).map((w) => ("" + w).toLowerCase());
 
   const seen = new Set();
   for (let i = 0; i < list.length; i++) {
@@ -646,11 +655,15 @@ if (typeof document !== "undefined") {
     const hasEncryption = document.getElementById("has-encryption");
     const pwdWrap = document.querySelector(".pwd-wrap");
 
-    resultSub.style.display = 'none';
-    pwdWrap.style.display = hasEncryption.checked ? '' : 'none';
-    hasEncryption.addEventListener("change", () => {
-      if (pwdWrap) pwdWrap.style.display = hasEncryption.checked ? '' : 'none';
-    });
+    if (resultSub) {
+      resultSub.style.display = "none";
+    }
+    if (pwdWrap && hasEncryption) {
+      pwdWrap.style.display = hasEncryption.checked ? "" : "none";
+      hasEncryption.addEventListener("change", () => {
+        pwdWrap.style.display = hasEncryption.checked ? "" : "none";
+      });
+    }
 
     const setMono = () => {
       resultEl.classList.remove("prose");
@@ -668,8 +681,7 @@ if (typeof document !== "undefined") {
         const password = passwordEl.value;
 
         const mode =
-          document.querySelector('input[name="mode"]:checked')?.value ||
-          "encoded";
+          document.querySelector('input[name="mode"]:checked')?.value || "zb32";
         const pipeline = pipelines[mode] || pipelines.zb32;
         let encoded = hasEncryption.checked
           ? await encryptBytes(plaintext, password)
@@ -683,7 +695,7 @@ if (typeof document !== "undefined") {
         }
         resultEl.innerText = encoded;
 
-        if (mode === "encoded") {
+        if (mode === "zb32") {
           setMono();
         } else {
           setProse();
@@ -692,7 +704,7 @@ if (typeof document !== "undefined") {
         try {
           if (resultSub && lengthSpan) {
             lengthSpan.innerText = String(encoded.length || 0);
-            resultSub.style.display = 'none';
+            resultSub.style.display = "none";
           }
         } catch (err) {
           console.error("length display failed", err);
@@ -708,11 +720,10 @@ if (typeof document !== "undefined") {
       try {
         const password = passwordEl.value;
         const mode =
-          document.querySelector('input[name="mode"]:checked')?.value ||
-          "encoded";
+          document.querySelector('input[name="mode"]:checked')?.value || "zb32";
         const pipeline = pipelines[mode] || pipelines.zb32;
-        let encoded = contentEl.value.trim();
-        if (resultSub) resultSub.style.display = '';
+        const encoded = contentEl.value.trim();
+        if (resultSub) resultSub.style.display = "";
 
         let packed = encoded;
         for (const fn of pipeline.decrypt) {
@@ -746,7 +757,7 @@ if (typeof document !== "undefined") {
       const text = resultEl.innerText || "";
       if (!text) return;
       try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
+        if (navigator.clipboard?.writeText) {
           await navigator.clipboard.writeText(text);
         } else {
           const ta = document.createElement("textarea");
@@ -758,29 +769,37 @@ if (typeof document !== "undefined") {
         }
         const prev = copyBtn.textContent;
         copyBtn.textContent = "Copied";
-        setTimeout(() => (copyBtn.textContent = prev), 1400);
+        setTimeout(() => {
+          copyBtn.textContent = prev;
+        }, 1400);
       } catch (err) {
         console.error("copy failed", err);
         copyBtn.textContent = "Copy failed";
-        setTimeout(() => (copyBtn.textContent = "Copy"), 1400);
+        setTimeout(() => {
+          copyBtn.textContent = "Copy";
+        }, 1400);
       }
     });
 
     pasteBtn.addEventListener("click", async () => {
       try {
         let text = "";
-        if (navigator.clipboard && navigator.clipboard.readText) {
+        if (navigator.clipboard?.readText) {
           text = await navigator.clipboard.readText();
         }
         contentEl.value = text;
         const prev = pasteBtn.textContent;
         pasteBtn.textContent = text ? "Pasted" : "Empty";
-        setTimeout(() => (pasteBtn.textContent = prev), 1200);
+        setTimeout(() => {
+          pasteBtn.textContent = prev;
+        }, 1200);
       } catch (err) {
         console.error("paste failed", err);
         const prev = pasteBtn.textContent;
         pasteBtn.textContent = "Paste failed";
-        setTimeout(() => (pasteBtn.textContent = prev), 1400);
+        setTimeout(() => {
+          pasteBtn.textContent = prev;
+        }, 1400);
       }
     });
   });

@@ -1,4 +1,4 @@
-window.words = [
+export const words = [
   "شدن",
   "صفت",
   "به",

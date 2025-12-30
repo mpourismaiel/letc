@@ -10,6 +10,20 @@ body {
   background: #f7f8fb;
   color: #0b1220;
 }
+button {
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid #0b1220;
+  background: #0b1220;
+  color: #fff;
+  cursor: pointer;
+}
+.footer button {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .container {
   max-width: 760px;
   margin: 0 auto;
@@ -74,12 +88,10 @@ textarea {
 
 .password-field {
   -webkit-text-security: disc;
-  text-security: disc;
   height: 44px;
 }
 .toggle-pwd:checked ~ .password-field {
   -webkit-text-security: none;
-  text-security: none;
 }
 
 .toggle-label {
@@ -159,14 +171,6 @@ textarea {
   color: #fff;
   border-color: #0b1220;
 }
-button {
-  padding: 10px 14px;
-  border-radius: 6px;
-  border: 1px solid #0b1220;
-  background: #0b1220;
-  color: #fff;
-  cursor: pointer;
-}
 button#decrypt {
   background: #fff;
   color: #0b1220;
@@ -204,13 +208,15 @@ button#decrypt {
 .copy-btn {
   margin-left: auto;
 }
-.copy-btn, .use-btn {
+.copy-btn,
+.use-btn {
   padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
 }
-.copy-btn:active, .use-btn:active {
+.copy-btn:active,
+.use-btn:active {
   transform: translateY(1px);
 }
 
