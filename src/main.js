@@ -9,6 +9,17 @@ if (!webCrypto || !subtleCrypto) {
   throw new Error("Web Crypto API is required for LetC");
 }
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      await navigator.serviceWorker.register('/sw.js');
+      console.log('Service worker registered');
+    } catch (err) {
+      console.warn('Service worker registration failed', err);
+    }
+  });
+}
+
 const ALPHABET = "ybndrfg8ejkmcpqxot1uwisza345h769";
 const MIN = 0x31; // 1
 const MAX = 0x7a; // z
