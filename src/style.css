@@ -171,6 +171,11 @@ textarea {
   color: #fff;
   border-color: #0b1220;
 }
+.modes-description {
+  font-size: 0.9rem;
+  color: #55617a;
+  margin-top: 4px;
+}
 button#decrypt {
   background: #fff;
   color: #0b1220;
@@ -249,5 +254,16 @@ button#decrypt {
   }
   .crypto-form {
     padding: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .footer .mode-toggle {
+    margin-left: 0;
   }
 }
