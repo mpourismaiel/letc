@@ -549,6 +549,70 @@ function decodeWordsToBytes(wordsStr) {
   return payload.subarray(0, len);
 }
 
+const PERSIAN_DIGITS = {
+  0: "۰",
+  1: "۱",
+  2: "۲",
+  3: "۳",
+  4: "۴",
+  5: "۵",
+  6: "۶",
+  7: "۷",
+  8: "۸",
+  9: "۹",
+};
+
+const LETTER_TO_PERSIAN = {
+  a: "ا",
+  b: "ب",
+  c: "چ",
+  d: "د",
+  e: "ه",
+  f: "ف",
+  g: "گ",
+  h: "ح",
+  i: "ص",
+  j: "ج",
+  k: "ک",
+  l: "ل",
+  m: "م",
+  n: "ن",
+  o: "ث",
+  p: "پ",
+  q: "ق",
+  r: "ر",
+  s: "س",
+  t: "ت",
+  u: "ع",
+  v: "ض",
+  w: "و",
+  x: "خ",
+  y: "ی",
+  z: "ز",
+};
+
+const PERSIAN_ALPHABET = ALPHABET.split("")
+  .map((ch) => LETTER_TO_PERSIAN[ch] || PERSIAN_DIGITS[ch] || ch)
+  .join("");
+
+const replaceWithPersianChars = async (s) =>
+  s
+    .split("")
+    .map((ch) => {
+      const i = ALPHABET.indexOf(ch);
+      return i >= 0 ? PERSIAN_ALPHABET[i] : ch;
+    })
+    .join("");
+
+const replacePersianChars = async (s) =>
+  s
+    .split("")
+    .map((ch) => {
+      const i = PERSIAN_ALPHABET.indexOf(ch);
+      return i >= 0 ? ALPHABET[i] : ch;
+    })
+    .join("");
+
 const pipelines = {
   zb32: {
     encrypt: [encodeWithLen],
@@ -558,17 +622,35 @@ const pipelines = {
     encrypt: [encodeWordsFromBytes],
     decrypt: [decodeWordsToBytes],
   },
+  persian: {
+    encrypt: [encodeWithLen, replaceWithPersianChars],
+    decrypt: [replacePersianChars, decodeWithLen],
+  },
+  simplepersian: {
+    encrypt: [encodeWithLen, replaceWithPersianChars],
+    decrypt: [replacePersianChars, decodeWithLen],
+  },
 };
 
 if (typeof document !== "undefined") {
   document.addEventListener("DOMContentLoaded", () => {
     const contentEl = document.getElementById("content");
     const passwordEl = document.getElementById("pwd");
-    const useWordlistEl = document.getElementById("use-wordlist");
     const encryptBtn = document.getElementById("encrypt");
     const decryptBtn = document.getElementById("decrypt");
     const resultEl = document.getElementById("result");
     const copyBtn = document.getElementById("copy-result");
+    const pasteBtn = document.getElementById("paste-content");
+    const resultSub = document.getElementById("result-subheader");
+    const lengthSpan = document.getElementById("length");
+    const hasEncryption = document.getElementById("has-encryption");
+    const pwdWrap = document.querySelector(".pwd-wrap");
+
+    resultSub.style.display = 'none';
+    pwdWrap.style.display = hasEncryption.checked ? '' : 'none';
+    hasEncryption.addEventListener("change", () => {
+      if (pwdWrap) pwdWrap.style.display = hasEncryption.checked ? '' : 'none';
+    });
 
     const setMono = () => {
       resultEl.classList.remove("prose");
@@ -580,80 +662,126 @@ if (typeof document !== "undefined") {
       resultEl.classList.add("prose");
     };
 
-    if (encryptBtn) {
-      encryptBtn.addEventListener("click", async () => {
-        try {
-          const plaintext = contentEl.value;
-          const password = passwordEl.value;
-          const packed = await encryptBytes(plaintext, password);
-          const pipeline = useWordlistEl.checked
-            ? pipelines.wordlist
-            : pipelines.zb32;
-          let encoded = packed;
-          for (const fn of pipeline.encrypt) {
-            encoded = await fn(encoded);
-          }
-          resultEl.innerText = encoded;
-          if (useWordlistEl.checked) {
-            setProse();
-          } else {
-            setMono();
-          }
-        } catch (e) {
-          console.error(e);
-          setProse();
-          resultEl.innerText = "encrypt error";
-        }
-      });
-    }
+    encryptBtn.addEventListener("click", async () => {
+      try {
+        const plaintext = contentEl.value;
+        const password = passwordEl.value;
 
-    if (decryptBtn) {
-      decryptBtn.addEventListener("click", async () => {
-        try {
-          const password = passwordEl.value;
-          const useWordlist = !!useWordlistEl.checked;
-          let encoded = contentEl.value.trim();
-          if (!useWordlist) encoded = encoded.toLowerCase();
-          const pipeline = useWordlist ? pipelines.wordlist : pipelines.zb32;
-          let packed = encoded;
-          for (const fn of pipeline.decrypt) {
-            packed = await fn(packed);
-          }
-          const plaintext = await decryptBytes(packed, password);
-          resultEl.innerText = plaintext;
-          setProse();
-        } catch (e) {
-          console.error(e);
-          setProse();
-          resultEl.innerText = "invalid input for decrypt";
-        }
-      });
-    }
+        const mode =
+          document.querySelector('input[name="mode"]:checked')?.value ||
+          "encoded";
+        const pipeline = pipelines[mode] || pipelines.zb32;
+        let encoded = hasEncryption.checked
+          ? await encryptBytes(plaintext, password)
+          : plaintext;
 
-    if (copyBtn) {
-      copyBtn.addEventListener("click", async () => {
-        const text = resultEl.innerText || "";
-        if (!text) return;
+        if (!hasEncryption.checked && typeof encoded === "string") {
+          encoded = from(encoded);
+        }
+        for (const fn of pipeline.encrypt) {
+          encoded = await fn(encoded);
+        }
+        resultEl.innerText = encoded;
+
+        if (mode === "encoded") {
+          setMono();
+        } else {
+          setProse();
+        }
+
         try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(text);
-          } else {
-            const ta = document.createElement("textarea");
-            ta.value = text;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand("copy");
-            ta.remove();
+          if (resultSub && lengthSpan) {
+            lengthSpan.innerText = String(encoded.length || 0);
+            resultSub.style.display = 'none';
           }
-          const prev = copyBtn.textContent;
-          copyBtn.textContent = "Copied";
-          setTimeout(() => (copyBtn.textContent = prev), 1400);
         } catch (err) {
-          console.error("copy failed", err);
-          copyBtn.textContent = "Copy failed";
-          setTimeout(() => (copyBtn.textContent = "Copy"), 1400);
+          console.error("length display failed", err);
         }
-      });
-    }
+      } catch (e) {
+        console.error(e);
+        setProse();
+        resultEl.innerText = "encrypt error\n" + e.message;
+      }
+    });
+
+    decryptBtn.addEventListener("click", async () => {
+      try {
+        const password = passwordEl.value;
+        const mode =
+          document.querySelector('input[name="mode"]:checked')?.value ||
+          "encoded";
+        const pipeline = pipelines[mode] || pipelines.zb32;
+        let encoded = contentEl.value.trim();
+        if (resultSub) resultSub.style.display = '';
+
+        let packed = encoded;
+        for (const fn of pipeline.decrypt) {
+          packed = await fn(packed);
+        }
+
+        let final;
+        if (hasEncryption.checked) {
+          final = await decryptBytes(packed, password);
+        } else {
+          // If pipeline produced bytes, convert to UTF-8 string for display.
+          if (ArrayBuffer.isView(packed)) {
+            final = utf8.toString(packed);
+          } else if (packed instanceof ArrayBuffer) {
+            final = utf8.toString(new Uint8Array(packed));
+          } else {
+            final = packed;
+          }
+        }
+
+        resultEl.innerText = final;
+        setProse();
+      } catch (e) {
+        console.error(e);
+        setProse();
+        resultEl.innerText = "invalid input for decrypt\n" + e.message;
+      }
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      const text = resultEl.innerText || "";
+      if (!text) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          ta.remove();
+        }
+        const prev = copyBtn.textContent;
+        copyBtn.textContent = "Copied";
+        setTimeout(() => (copyBtn.textContent = prev), 1400);
+      } catch (err) {
+        console.error("copy failed", err);
+        copyBtn.textContent = "Copy failed";
+        setTimeout(() => (copyBtn.textContent = "Copy"), 1400);
+      }
+    });
+
+    pasteBtn.addEventListener("click", async () => {
+      try {
+        let text = "";
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          text = await navigator.clipboard.readText();
+        }
+        contentEl.value = text;
+        const prev = pasteBtn.textContent;
+        pasteBtn.textContent = text ? "Pasted" : "Empty";
+        setTimeout(() => (pasteBtn.textContent = prev), 1200);
+      } catch (err) {
+        console.error("paste failed", err);
+        const prev = pasteBtn.textContent;
+        pasteBtn.textContent = "Paste failed";
+        setTimeout(() => (pasteBtn.textContent = prev), 1400);
+      }
+    });
   });
 }
