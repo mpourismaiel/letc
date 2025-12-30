@@ -594,7 +594,9 @@ if (typeof document !== "undefined") {
             encoded = await fn(encoded);
           }
           resultEl.innerText = encoded;
-          if (!useWordlistEl.checked) {
+          if (useWordlistEl.checked) {
+            setProse();
+          } else {
             setMono();
           }
         } catch (e) {
