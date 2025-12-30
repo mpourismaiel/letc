@@ -5,8 +5,8 @@ export default defineConfig({
   root: "src",
   plugins: [viteSingleFile()],
   build: {
-    outDir: "../",
-    emptyOutDir: false,
+    outDir: "../dist",
+    emptyOutDir: true,
     target: "es2018",
     cssTarget: "chrome61",
     minify: "esbuild",
