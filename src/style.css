@@ -263,7 +263,16 @@ button#decrypt {
     gap: 8px;
   }
 
+  .footer .modes-description {
+    width: 100%;
+    flex-shrink: 0;
+  }
+
   .footer .mode-toggle {
     margin-left: 0;
+  }
+
+  .footer .mode-toggle {
+    flex-wrap: wrap;
   }
 }
