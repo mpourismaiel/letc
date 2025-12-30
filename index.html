@@ -5,8 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LetC</title>
   <meta name="description" content="The most simple encrpytion I can think of">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <main class="container">
+    <h1>LetC - Encrypt/Decrypt for basic transport</h1>
 
+    <form id="crypto-form" class="crypto-form" onsubmit="return false;">
+      <div class="field">
+        <label for="content">Content to encrypt/decrypt</label>
+        <textarea id="content" name="content" rows="6" tabindex="1" placeholder="Enter text to encrypt or decrypt..."></textarea>
+      </div>
+
+      <div class="field">
+        <label for="pwd">Password</label>
+        <div class="pwd-wrap">
+          <input type="checkbox" id="toggle-pwd" class="toggle-pwd" aria-hidden="true">
+          <input id="pwd" class="password-field" name="password" type="text" tabindex="2" placeholder="Enter password" autocomplete="current-password">
+          <label for="toggle-pwd" class="toggle-label">Show</label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" id="encrypt" tabindex="3">Encrypt</button>
+        <button type="button" id="decrypt" tabindex="4">Decrypt</button>
+      </div>
+    </form>
+
+    <div id="result" class="result">Press encrypt/decrypt to see results</div>
+  </main>
+
+  <script src="script.js"></script>
 </body>
 </html>
