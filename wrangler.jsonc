@@ -1,0 +1,8 @@
+{
+  // Cloudflare Wrangler configuration to deploy static assets
+  "name": "letc",
+  "compatibility_date": "2025-12-30",
+  "assets": {
+    "directory": "./"
+  }
+}
