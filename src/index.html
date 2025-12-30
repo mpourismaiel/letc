@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LetC</title>
+  <meta name="description" content="The most simple encrpytion I can think of">
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <main class="container">
+    <h1>LetC - Encrypt/Decrypt for basic transport</h1>
+
+    <form id="crypto-form" class="crypto-form" onsubmit="return false;">
+      <div class="field">
+        <div class="field-header">
+          <label for="content">Content to encrypt/decrypt</label>
+          <button id="paste-content" type="button" class="paste-btn">Paste</button>
+        </div>
+        <div class="field-row">
+          <textarea id="content" name="content" rows="6" tabindex="1" placeholder="Enter text to encrypt or decrypt..."></textarea>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="has-encryption" class="encryption-label">
+          <input id="has-encryption" name="has-encryption" type="checkbox" aria-checked="false">
+          Encryption
+        </label>
+        <div class="pwd-wrap">
+          <input type="checkbox" id="toggle-pwd" class="toggle-pwd">
+          <input id="pwd" class="password-field" name="password" type="text" tabindex="2" placeholder="Enter password" autocomplete="current-password">
+          <label for="toggle-pwd" class="toggle-label">Show</label>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="actions">
+          <button type="button" id="encrypt" tabindex="3">Encode</button>
+          <button type="button" id="decrypt" tabindex="4">Decode</button>
+        </div>
+        <div class="mode-toggle" role="radiogroup" aria-label="Mode">
+          <input type="radio" id="mode-zb32" name="mode" value="zb32" checked>
+          <label for="mode-zb32">Encoded</label>
+
+          <input type="radio" id="mode-wordlist" name="mode" value="wordlist">
+          <label for="mode-wordlist">Encoded Word list</label>
+
+          <input type="radio" id="mode-persian" name="mode" value="persian">
+          <label for="mode-persian">Encoded Persian</label>
+
+          <input type="radio" id="mode-simplepersian" name="mode" value="simplepersian">
+          <label for="mode-simplepersian">Persian</label>
+        </div>
+      </div>
+    </form>
+
+    <div class="result-header">
+      <label id="result-label" for="result">Result</label>
+      <button id="copy-result" class="copy-btn" type="button" aria-label="Copy result">Copy</button>
+    </div>
+
+      <div class="result-subheader" id="result-subheader">
+        Length: <span id="length">0</span>
+      </div>
+
+    <div id="result" class="result prose" aria-live="polite">Press encrypt/decrypt to see results</div>
+  </main>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
