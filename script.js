@@ -368,34 +368,76 @@ async function deriveAesKey(password, salt, iterations = 250_000) {
 	);
 }
 
+async function gzipCompressUtf8(str) {
+	if (typeof CompressionStream === "undefined") return null; // not supported
+	const input = new Blob([te.encode(str)]);
+	const cs = new CompressionStream("gzip");
+	const stream = input.stream().pipeThrough(cs);
+	const ab = await new Response(stream).arrayBuffer();
+	return new Uint8Array(ab);
+}
+
+async function gzipDecompressToUtf8(bytes) {
+	if (typeof DecompressionStream === "undefined") {
+		throw new Error("DecompressionStream not supported");
+	}
+	const input = new Blob([bytes]);
+	const ds = new DecompressionStream("gzip");
+	const stream = input.stream().pipeThrough(ds);
+	const ab = await new Response(stream).arrayBuffer();
+	return td.decode(new Uint8Array(ab));
+}
+
 async function encryptBytes(plaintext, password) {
-	const version = new Uint8Array([1]);
+	const version = new Uint8Array([2]);
+
+	let flags = 0;
+	let ptBytes = te.encode(plaintext);
+	const gz = await gzipCompressUtf8(plaintext);
+	if (gz && gz.byteLength + 1 < ptBytes.byteLength) {
+		flags |= 1;
+		ptBytes = gz;
+	}
+
 	const salt = randBytes(16);
 	const iv = randBytes(12);
 	const key = await deriveAesKey(password, salt);
 
 	const ct = new Uint8Array(
-		await crypto.subtle.encrypt(
-			{ name: "AES-GCM", iv },
-			key,
-			te.encode(plaintext),
-		),
+		await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, ptBytes),
 	);
 
-	return concatBytes(version, salt, iv, ct);
+	return concatBytes(version, new Uint8Array([flags]), salt, iv, ct);
 }
 
 async function decryptBytes(packed, password) {
-	if (packed[0] !== 1) throw new Error("Unsupported version");
-	const salt = packed.slice(1, 17);
-	const iv = packed.slice(17, 29);
-	const ct = packed.slice(29);
+	const version = packed[0];
+	if (version !== 1 && version !== 2) throw new Error("Unsupported version");
+
+	let flags = 0;
+	let off = 1;
+
+	if (version === 2) {
+		flags = packed[off++];
+	}
+
+	const salt = packed.slice(off, off + 16);
+	off += 16;
+
+	const iv = packed.slice(off, off + 12);
+	off += 12;
+
+	const ct = packed.slice(off);
 
 	const key = await deriveAesKey(password, salt);
+	const ptBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
+	const ptBytes = new Uint8Array(ptBuf);
 
-	const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
+	if (version === 2 && flags & 1) {
+		return await gzipDecompressToUtf8(ptBytes);
+	}
 
-	return td.decode(pt);
+	return td.decode(ptBytes);
 }
 
 if (typeof document !== "undefined") {
