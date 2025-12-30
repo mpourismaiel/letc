@@ -110,6 +110,48 @@ button#decrypt {
 	color: #55617a;
 }
 
+/* ensure result text always wraps and preserves newlines */
+.result {
+	white-space: pre-wrap;
+	word-break: break-word;
+	overflow-wrap: anywhere;
+}
+
+/* visual styling for result header (label + copy button) */
+.result-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 12px;
+}
+.result-header label {
+	font-weight: 700;
+	color: #0b1220;
+  margin: 0;
+}
+.copy-btn {
+	margin-left: auto;
+	padding: 6px 10px;
+	border-radius: 6px;
+	cursor: pointer;
+	font-size: 0.85rem;
+}
+.copy-btn:active {
+	transform: translateY(1px);
+}
+
+/* font modes */
+.result.mono {
+	font-family:
+		ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New",
+		monospace;
+	color: #0b1220;
+}
+.result.prose {
+	font-family: inherit;
+	color: #55617a;
+}
+
 @media (max-width: 480px) {
 	body {
 		padding: 12px;

@@ -32,7 +32,12 @@
       </div>
     </form>
 
-    <div id="result" class="result">Press encrypt/decrypt to see results</div>
+    <div class="result-header">
+      <label id="result-label" for="result">Result</label>
+      <button id="copy-result" class="copy-btn" type="button" aria-label="Copy result">Copy</button>
+    </div>
+
+    <div id="result" class="result prose" aria-live="polite">Press encrypt/decrypt to see results</div>
   </main>
 
   <script src="script.js"></script>

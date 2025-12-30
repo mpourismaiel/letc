@@ -172,6 +172,10 @@ function fromBuffer(buffer) {
 	return copy;
 }
 
+function fromArrayBuffer(arrayBuffer, byteOffset, length) {
+  return new Uint8Array(arrayBuffer, byteOffset, length)
+}
+
 function from(value, encodingOrOffset, length) {
 	// from(string, encoding)
 	if (typeof value === "string") return fromString(value, encodingOrOffset);
@@ -299,6 +303,28 @@ function quintet(s, i) {
 	return bits;
 }
 
+function u32be(n) {
+	return new Uint8Array([(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]);
+}
+
+function readU32be(b, off = 0) {
+	return ((b[off] << 24) | (b[off + 1] << 16) | (b[off + 2] << 8) | b[off + 3]) >>> 0;
+}
+
+function encodeWithLen(bytes) {
+	const len = bytes.byteLength >>> 0;
+	return encode(concatBytes(u32be(len), bytes));
+}
+
+function decodeWithLen(s) {
+	const all = decode(s);
+	if (all.byteLength < 4) throw new Error("Invalid input");
+	const len = readU32be(all, 0);
+	const payload = all.subarray(4);
+	if (payload.byteLength < len) throw new Error("Truncated input");
+	return payload.subarray(0, len);
+}
+
 const te = new TextEncoder();
 const td = new TextDecoder();
 
@@ -379,27 +405,74 @@ if (typeof document !== "undefined") {
 		const encryptBtn = document.getElementById("encrypt");
 		const decryptBtn = document.getElementById("decrypt");
 		const resultEl = document.getElementById("result");
+		const copyBtn = document.getElementById("copy-result");
 
-		encryptBtn.addEventListener("click", async () => {
-			try {
-				const plaintext = contentEl.value;
-				const password = passwordEl.value;
-				const packed = await encryptBytes(plaintext, password);
-				resultEl.innerText = encode(packed);
-			} catch (e) {
-				console.error(e);
-			}
-		});
+		const setMono = () => {
+			resultEl.classList.remove("prose");
+			resultEl.classList.add("mono");
+		};
 
-		decryptBtn.addEventListener("click", async () => {
-			try {
-				const encoded = contentEl.value.trim().toLowerCase();
-				const password = passwordEl.value;
-				const packed = decode(encoded);
-				resultEl.innerText = await decryptBytes(packed, password);
-			} catch (e) {
-				console.error(e);
-			}
-		});
+		const setProse = () => {
+			resultEl.classList.remove("mono");
+			resultEl.classList.add("prose");
+		};
+
+		if (encryptBtn) {
+			encryptBtn.addEventListener("click", async () => {
+				try {
+					const plaintext = contentEl.value;
+					const password = passwordEl.value;
+					const packed = await encryptBytes(plaintext, password);
+					resultEl.innerText = encodeWithLen(packed);
+					setMono();
+				} catch (e) {
+					console.error(e);
+					setProse();
+					resultEl.innerText = 'encrypt error';
+				}
+			});
+		}
+
+		if (decryptBtn) {
+			decryptBtn.addEventListener("click", async () => {
+				try {
+					const encoded = contentEl.value.trim().toLowerCase();
+					const password = passwordEl.value;
+					const packed = decodeWithLen(encoded);
+					resultEl.innerText = await decryptBytes(packed, password);
+					setProse();
+				} catch (e) {
+					console.error(e);
+					setProse();
+					resultEl.innerText = 'invalid input for decrypt';
+				}
+			});
+		}
+
+		if (copyBtn) {
+			copyBtn.addEventListener('click', async () => {
+				const text = resultEl.innerText || '';
+				if (!text) return;
+				try {
+					if (navigator.clipboard && navigator.clipboard.writeText) {
+						await navigator.clipboard.writeText(text);
+					} else {
+						const ta = document.createElement('textarea');
+						ta.value = text;
+						document.body.appendChild(ta);
+						ta.select();
+						document.execCommand('copy');
+						ta.remove();
+					}
+					const prev = copyBtn.textContent;
+					copyBtn.textContent = 'Copied';
+					setTimeout(() => (copyBtn.textContent = prev), 1400);
+				} catch (err) {
+					console.error('copy failed', err);
+					copyBtn.textContent = 'Copy failed';
+					setTimeout(() => (copyBtn.textContent = 'Copy'), 1400);
+				}
+			});
+		}
 	});
 }
