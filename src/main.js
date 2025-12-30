@@ -12,7 +12,7 @@ if (!webCrypto || !subtleCrypto) {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      await navigator.serviceWorker.register('/letc/sw.js');
+      await navigator.serviceWorker.register('/sw.js');
       console.log('Service worker registered');
     } catch (err) {
       console.warn('Service worker registration failed', err);
